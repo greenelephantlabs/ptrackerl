@@ -8,7 +8,7 @@
 
 %% API
 -export([start/0, update/2,
-	token/2, projects/1, stories/1, api/3, api/4]).
+	token/2, projects/1, stories/2, api/3, api/4]).
 %% GEN SERVER
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2]).
 
@@ -38,11 +38,11 @@ projects(all) ->
 projects({find, ProjectId}) ->
 	gen_server:call(?MODULE, {projects, {find, ProjectId}}).
 
--spec stories(atom()|tuple()) -> Response::term().
-stories(all) ->
-	gen_server:call(?MODULE, {stories, all});
-stories({find, StoryId}) ->
-	gen_server:call(?MODULE, {stories, {find, StoryId}}).
+-spec stories(list(), atom()|tuple()) -> Response::term().
+stories(ProjectId, all) ->
+	gen_server:call(?MODULE, {stories, {ProjectId, all}});
+stories(ProjectId, {find, StoryId}) ->
+	gen_server:call(?MODULE, {stories, {ProjectId, {find, StoryId}}}).
 
 -spec api(list(),atom(),tuple()) -> tuple().
 api(Url, Method, Param) ->
@@ -87,15 +87,24 @@ handle_call({token, Username, Password}, _From, State) ->
 			{reply, {error, Error}, State}
 	end;
 
-handle_call({projects, Id}, _From, State) ->
+handle_call({projects, Action}, _From, State) ->
 	Token = State#state.token,
-	Url = case Id of
+	Url = case Action of
 		all -> build_url(["projects"]);
-		_ ->   build_url(["projects", Id])
+		{find, Id} -> build_url(["projects", Id])
 	end,
 	Api = api(Url, get, [], Token),
 	io:format("Api: ~p\n", [Api]),
-	{reply, ok, State}.
+	{reply, ok, State};
+
+handle_call({stories, {ProjectId, Action}}, _From, State) ->
+	Token = State#state.token,
+	Url = case Action of
+		all -> build_url(["projects", ProjectId, "stories"]);
+		{find, Id} -> build_url(["projects", ProjectId, "stories", Id])
+	end,
+	Api = api(Url, get, [], Token),
+	{reply, Api, State}.
 
 -spec handle_cast(term(), state()) -> {noreply, state()}.
 handle_cast(_P, State) ->
