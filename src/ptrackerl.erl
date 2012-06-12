@@ -8,13 +8,14 @@
 
 %% API
 -export([start/0, update/2,
-	token/2, projects/0, projects/1, api/3, api/4]).
+	token/2, projects/1, stories/1, api/3, api/4]).
 %% GEN SERVER
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2]).
 
 -record(state, {
 		token ::string()
 		}).
+-opaque state() :: #state{}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% API FUNCTIONS
@@ -23,19 +24,31 @@
 start() ->
 	gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
+-spec update(atom(), term()) -> Response::term().
 update(token, Token) ->
 	gen_server:call(?MODULE, {update, token, Token}).
 
+-spec token(list(), list()) -> Response::term().
 token(Username, Password) ->
 	gen_server:call(?MODULE, {token, Username, Password}).
 
-projects() ->
-	gen_server:call(?MODULE, {projects, all}).
-projects(ProjectId) ->
-	gen_server:call(?MODULE, {projects, ProjectId}).
+-spec projects(atom()|tuple()) -> Response::term().
+projects(all) ->
+	gen_server:call(?MODULE, {projects, all});
+projects({find, ProjectId}) ->
+	gen_server:call(?MODULE, {projects, {find, ProjectId}}).
 
+-spec stories(atom()|tuple()) -> Response::term().
+stories(all) ->
+	gen_server:call(?MODULE, {stories, all});
+stories({find, StoryId}) ->
+	gen_server:call(?MODULE, {stories, {find, StoryId}}).
+
+-spec api(list(),atom(),tuple()) -> tuple().
 api(Url, Method, Param) ->
 	api(Url, Method, Param, none).
+
+-spec api(list(),atom(),tuple(),list()) -> tuple().
 api(Url, Method, Params, Token) ->
 	Formatted = build_params(Params),
 	Header = case Token of
@@ -56,9 +69,11 @@ api(Url, Method, Params, Token) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% GEN SERVER FUNCTIONS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+-spec init(list()) -> {ok, state()}.
 init([]) ->
 	{ok, #state{token = ""}}.
 
+-spec handle_call(tuple(),reference(), state()) -> {reply, ok, state()}.
 handle_call({update, token, Token}, _From, State) ->
 	{ reply, ok, State#state{token=Token} };
 
@@ -82,14 +97,18 @@ handle_call({projects, Id}, _From, State) ->
 	io:format("Api: ~p\n", [Api]),
 	{reply, ok, State}.
 
+-spec handle_cast(term(), state()) -> {noreply, state()}.
 handle_cast(_P, State) ->
 	{noreply, State}.
 
+-spec handle_info(term(), state()) -> {noreply, state()}.
 handle_info(_Info, State) ->
 	{noreply, State}.
 
-terminate(_Foo, _Bar) ->
+-spec terminate(any(), state()) -> any().
+terminate(_Reason, _State) ->
 	ok.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% PRIVATE FUNCTIONS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
