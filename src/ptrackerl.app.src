@@ -1,4 +1,4 @@
-{application, p,
+{application, ptrackerl,
  [
   {description, "Access the Pivotal Tracker API using ibrowse"},
   {vsn, "0.1"},

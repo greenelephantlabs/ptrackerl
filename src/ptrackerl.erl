@@ -1,4 +1,4 @@
--module(p).
+-module(ptrackerl).
 -author("Gustavo Chain <gustavo@inaka.net>").
 -vsn("0.1").
 
