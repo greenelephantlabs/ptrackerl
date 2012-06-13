@@ -64,7 +64,9 @@ activity(ProjectId, Filters) ->
 projects(all) ->
 	gen_server:call(?MODULE, {projects, all});
 projects({find, ProjectId}) ->
-	gen_server:call(?MODULE, {projects, {find, ProjectId}}).
+	gen_server:call(?MODULE, {projects, {find, ProjectId}});
+projects({add, ProjectRecord}) ->
+	gen_server:call(?MODULE, {projects, {add, ProjectRecord}}).
 
 %% Stories
 -spec stories(list(), atom()|tuple()) -> Response::term().
@@ -140,11 +142,16 @@ handle_call({activity, {project_id, ProjectId, filters, Filters}}, _From, State)
 
 handle_call({projects, Action}, _From, State) ->
 	Token = State#state.token,
-	Url = case Action of
-		all -> ["projects"];
-		{find, Id} -> ["projects", Id]
+	Request = case Action of
+		all -> #request{ url = ["projects"] };
+		{find, Id} -> #request{ url = ["projects", Id] };
+		{add, ProjectRecord} -> #request{
+				url = ["projects"],
+				method = post,
+				headers = [{"Content-Type", "application/xml"}],
+				params = [ptrackerl_pack:project(pack, ProjectRecord)]
+			}
 	end,
-	Request = #request{ url = Url },
 	{reply, api(Request, Token), State};
 
 handle_call({stories, {ProjectId, Action}}, _From, State) ->

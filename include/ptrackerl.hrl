@@ -3,6 +3,13 @@
 		id   :: integer()
 		}).
 
+-record(project, {
+		id          :: integer(),
+		name        :: string(),
+		point_scale :: list(),
+		labels      :: list()
+		}).
+
 -record(story, {
 		id            :: integer(),
 		project_id    :: integer(),
