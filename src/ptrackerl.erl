@@ -66,7 +66,9 @@ projects(all) ->
 projects({find, ProjectId}) ->
 	gen_server:call(?MODULE, {projects, {find, ProjectId}});
 projects({add, ProjectRecord}) ->
-	gen_server:call(?MODULE, {projects, {add, ProjectRecord}}).
+	gen_server:call(?MODULE, {projects, {add, ProjectRecord}});
+projects({del, ProjectId}) ->
+	gen_server:call(?MODULE, {projects, {del, ProjectId}}).
 
 %% Stories
 -spec stories(list(), atom()|tuple()) -> Response::term().
@@ -150,7 +152,11 @@ handle_call({projects, Action}, _From, State) ->
 				method = post,
 				headers = [{"Content-Type", "application/xml"}],
 				params = [ptrackerl_pack:project(pack, ProjectRecord)]
-			}
+				};
+		{del, ProjectId} -> #request{
+				url = ["projects", ProjectId],
+				method = delete
+				}
 	end,
 	{reply, api(Request, Token), State};
 
@@ -216,6 +222,7 @@ format_param(String) -> String.
 status("200") -> 200;
 status("400") -> 400;
 status("401") -> 401;
+status("500") -> 500;
 status(_)     -> undefined.
 
 test() ->
