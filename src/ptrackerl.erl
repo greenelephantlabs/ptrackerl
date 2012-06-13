@@ -44,7 +44,9 @@ projects({find, ProjectId}) ->
 stories(ProjectId, all) ->
 	gen_server:call(?MODULE, {stories, {ProjectId, all}});
 stories(ProjectId, {find, StoryId}) ->
-	gen_server:call(?MODULE, {stories, {ProjectId, {find, StoryId}}}).
+	gen_server:call(?MODULE, {stories, {ProjectId, {find, StoryId}}});
+stories(ProjectId, {add, StoryDetail}) ->
+	gen_server:call(?MODULE, {stories, {ProjectId, {add, StoryDetail}}}).
 
 %% Tasks
 -spec tasks(list(), list(), atom()|tuple()) -> Response::term().
@@ -108,11 +110,12 @@ handle_call({projects, Action}, _From, State) ->
 
 handle_call({stories, {ProjectId, Action}}, _From, State) ->
 	Token = State#state.token,
-	Url = case Action of
-		all -> build_url(["projects", ProjectId, "stories"]);
-		{find, Id} -> build_url(["projects", ProjectId, "stories", Id])
+	{Url, Method} = case Action of
+		all -> { build_url(["projects", ProjectId, "stories"]), get };
+		{find, Id} -> { build_url(["projects", ProjectId, "stories", Id]), get };
+		{add, StoryDetail} -> { build_url(["projects", ProjectId, "stories"]), post }
 	end,
-	Api = api(Url, get, [], Token),
+	Api = api(Url, Method, [], Token),
 	{reply, Api, State};
 
 handle_call({tasks, {ProjectId, StoryId, Action}}, _From, State) ->
