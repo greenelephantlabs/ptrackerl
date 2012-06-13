@@ -10,7 +10,7 @@
 
 %% API
 -export([start/0, update/2,
-	token/2, projects/1, stories/2, tasks/3, api/3, api/1, api/2, api/4]).
+	token/2, projects/1, stories/2, tasks/3, api/1, api/2]).
 %% GEN SERVER
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2]).
 -export([test/0]).
@@ -66,10 +66,6 @@ tasks(ProjectId, StoryId, all) ->
 tasks(ProjectId, StoryId, {find, TaskId}) ->
 	gen_server:call(?MODULE, {tasks, {ProjectId, StoryId, {find, TaskId}}}).
 
--spec api(list(),atom(),tuple()) -> tuple().
-api(Url, Method, Param) ->
-	api(Url, Method, Param, none).
-
 -spec api(request()) -> tuple().
 api(Request) ->
 	api(Request, undefined).
@@ -91,26 +87,6 @@ api(Request, Token) ->
 	
 	{ok, Status, _Headers, Body} = ibrowse:send_req(Url, Headers, Method, Params),
 	{status(Status), Body}.
-
--spec api(list(),atom(),tuple(),list()) -> tuple().
-api(Url, Method, Params, Token) ->
-	Formatted = build_params(Params),
-	Header = case Token of
-		none ->
-			[];
-		_ ->
-			[{"X-TrackerToken", Token}]
-	end,
-	io:format("URL: ~p\n", [Url]),
-	io:format("Data: ~p\n", [Formatted]),
-	{ok,Status,_Headers,Body} = ibrowse:send_req(Url, Header, Method, Formatted),
-	case Status of
-		"200" ->
-			{Status, ptrackerl_pack:token(unpack, Body)};
-		_ ->
-			{Status, Body}
-	end.
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% GEN SERVER FUNCTIONS
