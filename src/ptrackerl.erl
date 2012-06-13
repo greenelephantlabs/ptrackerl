@@ -10,7 +10,7 @@
 
 %% API
 -export([start/0, update/2,
-	token/2, projects/1, stories/2, tasks/3, api/1, api/2]).
+	token/2, activity/0, activity/1, activity/2, projects/1, stories/2, tasks/3, api/1, api/2]).
 %% GEN SERVER
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2]).
 -export([test/0]).
@@ -39,9 +39,25 @@ start() ->
 update(token, Token) ->
 	gen_server:call(?MODULE, {update, token, Token}).
 
+%% Token
 -spec token(list(), list()) -> Response::term().
 token(Username, Password) ->
 	gen_server:call(?MODULE, {token, Username, Password}).
+
+%% Activity
+-spec activity() -> Response::term().
+activity() ->
+	activity(undefined, []).
+
+-spec activity(list()|string()) -> Response::term().
+activity([{_,_}|_] = Filters) ->
+	activity(undefined, Filters);
+activity(ProjectId) ->
+	activity(ProjectId, []).
+
+-spec activity(string(),list()) -> Response::term().
+activity(ProjectId, Filters) ->
+	gen_server:call(?MODULE, {activity, {project_id, ProjectId, filters, Filters}}).
 
 %% Projects
 -spec projects(atom()|tuple()) -> Response::term().
@@ -106,6 +122,21 @@ handle_call({token, Username, Password}, _From, State) ->
 			params = [{username, Username}, {password, Password}]
 			},
 	{reply, api(Request), State};
+
+handle_call({activity}, _From, State) ->
+	Token = State#state.token,
+	Request = #request{ url = ["activities"] },
+	{reply, api(Request, Token), State};
+
+handle_call({activity, {project_id, ProjectId, filters, Filters}}, _From, State) ->
+	Token = State#state.token,
+	Params = build_params(Filters),
+	Url = case ProjectId of
+		undefined -> [];
+		_ -> ["projects", ProjectId]
+	end ++ ["activities?" ++ Params],
+	Request = #request{ url = Url },
+	{reply, api(Request, Token), State};
 
 handle_call({projects, Action}, _From, State) ->
 	Token = State#state.token,
