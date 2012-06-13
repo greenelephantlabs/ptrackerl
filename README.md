@@ -22,9 +22,11 @@ ptrackerl:update(token, T). % Set token for further requests
 % PROJECTS
 ptrackerl:projects(all).
 ptrackerl:projects({find, "PROJECT_ID").
+Project = #project{name = "Project Name", point_scale = ["1","2","3"].
+ptrackerl:projects({add, Project}).
 
 % STORIES
 ptrackerl:stories("PROJECT_ID", all).
 ptrackerl:stories("PROJECT_ID", {find, "STORY_ID"}).
-R = #story{description = "My Description", story_type = "feature", name = "Story Name"}.
-ptrackerl:stories("PROJECT_ID", {add, R}).
+Story = #story{description = "My Description", story_type = "feature", name = "Story Name"}.
+ptrackerl:stories("PROJECT_ID", {add, Story}).
