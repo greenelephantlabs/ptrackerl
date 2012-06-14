@@ -2,7 +2,7 @@
 -include("ptrackerl.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 
--export([project/2, membership/2, story/2]).
+-export([project/2, membership/2, story/2, note/2]).
 
 -define(FIELD(Rec, Field, Fun),
 	case Rec of
@@ -62,3 +62,9 @@ story(pack, Record) ->
 				?FIELD(Record#story.labels, labels, fun(X) -> string:join(X, ",") end)
 				}],
 	to_text(Story).
+
+note(pack, Record) ->
+	Note = [{note,
+				?FIELD(Record#note.text, text)
+				}],
+	to_text(Note).

@@ -40,4 +40,8 @@
 		labels        :: list()
 		}).
 
+-record(note, {
+		text :: string()
+		}).
+
 

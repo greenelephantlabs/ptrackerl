@@ -107,7 +107,9 @@ stories(ProjectId, {find, StoryId}) ->
 stories(ProjectId, {add, StoryRecord}) ->
 	gen_server:call(?MODULE, {stories, {ProjectId, {add, StoryRecord}}});
 stories(ProjectId, {update, StoryId, StoryRecord}) ->
-	gen_server:call(?MODULE, {stories, {ProjectId, {update, StoryId, StoryRecord}}}).
+	gen_server:call(?MODULE, {stories, {ProjectId, {update, StoryId, StoryRecord}}});
+stories(ProjectId, {note, StoryId, NoteRecord}) ->
+	gen_server:call(?MODULE, {stories, {ProjectId, {note, StoryId, NoteRecord}}}).
 
 %% Tasks
 -spec tasks(list(), list(), atom()|tuple()) -> Response::term().
@@ -239,6 +241,13 @@ handle_call({stories, {ProjectId, Action}}, _From, State) ->
 				method = put,
 				headers = [{"Content-Type", "application/xml"}],
 				params = [ptrackerl_pack:story(pack, StoryRecord)]
+				};
+		{note, StoryId, NoteRecord} ->
+			#request{
+				url = ["projects", ProjectId, "stories", StoryId, "notes"],
+				method = post,
+				headers = [{"Content-Type", "application/xml"}],
+				params = [ptrackerl_pack:note(pack, NoteRecord)]
 				}
 	end,
 	{reply, api(Request, Token), State};
