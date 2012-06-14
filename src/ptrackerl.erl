@@ -111,7 +111,9 @@ stories(ProjectId, {update, StoryId, StoryRecord}) ->
 stories(ProjectId, {del, StoryId}) ->
 	gen_server:call(?MODULE, {stories, {ProjectId, {del, StoryId}}});
 stories(ProjectId, {note, StoryId, NoteRecord}) ->
-	gen_server:call(?MODULE, {stories, {ProjectId, {note, StoryId, NoteRecord}}}).
+	gen_server:call(?MODULE, {stories, {ProjectId, {note, StoryId, NoteRecord}}});
+stories(ProjectId, {deliver_all_finished}) ->
+	gen_server:call(?MODULE, {stories, {ProjectId, {deliver_all_finished}}}).
 
 %% Tasks
 -spec tasks(list(), list(), atom()|tuple()) -> Response::term().
@@ -255,6 +257,11 @@ handle_call({stories, {ProjectId, Action}}, _From, State) ->
 				method = post,
 				headers = [{"Content-Type", "application/xml"}],
 				params = [ptrackerl_pack:note(pack, NoteRecord)]
+				};
+		{deliver_all_finished} ->
+			#request{
+				url = ["projects", ProjectId, "stories", "deliver_all_finished"],
+				method = put
 				}
 	end,
 	{reply, api(Request, Token), State};
