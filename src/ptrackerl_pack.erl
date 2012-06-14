@@ -2,7 +2,7 @@
 -include("ptrackerl.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 
--export([project/2, story/2]).
+-export([project/2, membership/2, story/2]).
 
 -define(FIELD(Rec, Field, Fun),
 	case Rec of
@@ -36,6 +36,18 @@ project(pack, Record) ->
 				?FIELD(Record#project.labels, labels, fun(X) -> string:join(X, ",") end)
 				}],
 	to_text(Project).
+
+-spec membership(atom(), record()) -> string().
+membership(pack, Record) ->
+	Membership = [{membership,
+				?FIELD(Record#membership.role, role) ++
+				[{person,
+						?FIELD(Record#membership.person#person.name, name) ++
+						?FIELD(Record#membership.person#person.initials, initials) ++
+						?FIELD(Record#membership.person#person.email, email)
+						}]
+				}],
+	to_text(Membership).
 
 -spec story(atom(), record()) -> string().
 story(pack, Record) ->

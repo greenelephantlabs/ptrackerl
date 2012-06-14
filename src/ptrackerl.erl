@@ -10,7 +10,7 @@
 
 %% API
 -export([start/0, update/2,
-	token/2, activity/0, activity/1, activity/2, projects/1, stories/2, tasks/3, api/1, api/2]).
+	token/2, activity/0, activity/1, activity/2, projects/1, membership/2, stories/2, tasks/3, api/1, api/2]).
 %% GEN SERVER
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2]).
 -export([test/0]).
@@ -69,6 +69,11 @@ projects({add, ProjectRecord}) ->
 	gen_server:call(?MODULE, {projects, {add, ProjectRecord}});
 projects({del, ProjectId}) ->
 	gen_server:call(?MODULE, {projects, {del, ProjectId}}).
+
+%% Membership
+-spec membership(string(), tuple()) -> Response::term().
+membership(ProjectId, Actions) ->
+	gen_server:call(?MODULE, {membership, ProjectId, Actions}).
 
 %% Stories
 -spec stories(list(), atom()|tuple()) -> Response::term().
@@ -159,6 +164,24 @@ handle_call({projects, Action}, _From, State) ->
 				}
 	end,
 	{reply, api(Request, Token), State};
+
+handle_call({membership, ProjectId, Action}, _From, State) ->
+	Token = State#state.token,
+	Request = case Action of
+		all -> #request{ url = ["projects", ProjectId, "memberships"] };
+		{find, Id} -> #request{ url = ["projects", ProjectId, "memberships", Id] };
+		{add, Record} -> #request {
+				url = ["projects", ProjectId, "memberships"],
+				method = post,
+				headers = [{"Content-Type", "application/xml"}],
+				params = [ptrackerl_pack:membership(pack, Record)]
+				};
+		{del, Id} -> #request {
+				url = ["projects", ProjectId, "memberships", Id],
+				method = delete
+			}
+		end,
+		{reply, api(Request, Token), State};
 
 handle_call({stories, {ProjectId, Action}}, _From, State) ->
 	Token = State#state.token,

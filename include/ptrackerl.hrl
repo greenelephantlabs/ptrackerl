@@ -10,6 +10,19 @@
 		labels      :: list()
 		}).
 
+-record(person, {
+		email    :: string(),
+		name     :: string(),
+		initials :: string()
+		}).
+
+-record(membership, {
+		id                 :: integer(),
+		person=#person{},
+		role               :: string(),
+		project=#project{}
+		}).
+
 -record(story, {
 		id            :: integer(),
 		project_id    :: integer(),
