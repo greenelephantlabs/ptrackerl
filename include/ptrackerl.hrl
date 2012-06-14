@@ -9,18 +9,20 @@
 		point_scale :: list(),
 		labels      :: list()
 		}).
+-type project() :: #project{}.
 
 -record(person, {
 		email    :: string(),
 		name     :: string(),
 		initials :: string()
 		}).
+-type person() :: #person{}.
 
 -record(membership, {
 		id                 :: integer(),
-		person=#person{},
+		person=#person{}   :: person(),
 		role               :: string(),
-		project=#project{}
+		project=#project{} :: project()
 		}).
 
 -record(story, {

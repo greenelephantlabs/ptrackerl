@@ -4,13 +4,21 @@
 
 -behaviour(gen_server).
 
--type start_result() :: {ok, pid()} | {error, {already_started, pid()}} | {error, term()}.
-
 -include("ptrackerl.hrl").
+-type start_result() :: {ok, pid()} | {error, {already_started, pid()}} | {error, term()}.
+-type default_actions()      :: all | {find, string()} | {del, string()}.
 
 %% API
 -export([start/0, update/2,
-	token/2, activity/0, activity/1, activity/2, projects/1, membership/2, stories/2, tasks/3, api/1, api/2]).
+	token/2,
+	activity/0, activity/1, activity/2,
+	projects/1,
+	membership/2,
+	iterations/1, iterations/2, iterations/3,
+	stories/2,
+	tasks/3,
+	api/1, api/2]).
+
 %% GEN SERVER
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2]).
 -export([test/0]).
@@ -71,9 +79,24 @@ projects({del, ProjectId}) ->
 	gen_server:call(?MODULE, {projects, {del, ProjectId}}).
 
 %% Membership
--spec membership(string(), tuple()) -> Response::term().
+-spec membership(string(), default_actions() | {add, person()}) -> Response::term().
 membership(ProjectId, Actions) ->
 	gen_server:call(?MODULE, {membership, ProjectId, Actions}).
+
+%% Iterations
+-spec iterations(string()) -> Response::term().
+iterations(ProjectId) ->
+	iterations(ProjectId, "", []).
+
+-spec iterations(string(), list()|string()) -> Response::term().
+iterations(ProjectId, [{_,_},_] = Limits) ->
+	iterations(ProjectId, "", Limits);
+iterations(ProjectId, Group) ->
+	iterations(ProjectId, Group, []).
+
+-spec iterations(string(), string(), list()) -> Response::term().
+iterations(ProjectId, Group, Limits) ->
+	gen_server:call(?MODULE, {iterations, ProjectId, Group, Limits}).
 
 %% Stories
 -spec stories(list(), atom()|tuple()) -> Response::term().
@@ -182,6 +205,13 @@ handle_call({membership, ProjectId, Action}, _From, State) ->
 			}
 		end,
 		{reply, api(Request, Token), State};
+
+handle_call({iterations, ProjectId, Group, Limits}, _From, State) ->
+	Token = State#state.token,
+	Params = build_params(Limits),
+	io:format("Params: ~p\n", [Params]),
+	Request = #request{ url = ["projects", ProjectId, "iterations", Group ++ "?" ++ Params] },
+	{reply, api(Request, Token), State};
 
 handle_call({stories, {ProjectId, Action}}, _From, State) ->
 	Token = State#state.token,
