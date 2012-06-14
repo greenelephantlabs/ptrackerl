@@ -108,6 +108,8 @@ stories(ProjectId, {add, StoryRecord}) ->
 	gen_server:call(?MODULE, {stories, {ProjectId, {add, StoryRecord}}});
 stories(ProjectId, {update, StoryId, StoryRecord}) ->
 	gen_server:call(?MODULE, {stories, {ProjectId, {update, StoryId, StoryRecord}}});
+stories(ProjectId, {del, StoryId}) ->
+	gen_server:call(?MODULE, {stories, {ProjectId, {del, StoryId}}});
 stories(ProjectId, {note, StoryId, NoteRecord}) ->
 	gen_server:call(?MODULE, {stories, {ProjectId, {note, StoryId, NoteRecord}}}).
 
@@ -241,6 +243,11 @@ handle_call({stories, {ProjectId, Action}}, _From, State) ->
 				method = put,
 				headers = [{"Content-Type", "application/xml"}],
 				params = [ptrackerl_pack:story(pack, StoryRecord)]
+				};
+		{del, StoryId} ->
+			#request{
+				url = ["projects", ProjectId, "stories", StoryId],
+				method = delete
 				};
 		{note, StoryId, NoteRecord} ->
 			#request{
