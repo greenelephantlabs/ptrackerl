@@ -1,7 +1,22 @@
+-type id() :: pos_integer()|string().
+
 -record(token, {
 		guid :: string(),
 		id   :: integer()
 		}).
+-type token() :: #token{}.
+
+-record(activity, {
+		id      :: integer(),
+		version :: integer(),
+		event_type :: string(),
+		ocurred_at :: string(),
+		author :: string(),
+		project_id :: integer(),
+		description :: string(),
+		stories :: list()
+		}).
+-type activity() :: #token{}.
 
 -record(project, {
 		id          :: integer(),
@@ -24,6 +39,7 @@
 		role               :: string(),
 		project=#project{} :: project()
 		}).
+-type membership() :: #membership{}.
 
 -record(story, {
 		id            :: integer(),
@@ -39,9 +55,11 @@
 		created_at    :: string(),
 		labels        :: list()
 		}).
+-type story() :: #story{}.
 
 -record(note, {
 		text :: string()
 		}).
+-type note() :: #note{}.
 
 

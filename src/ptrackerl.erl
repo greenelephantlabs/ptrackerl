@@ -1,314 +1,218 @@
 -module(ptrackerl).
 -author("Gustavo Chain <gustavo@inaka.net>").
--vsn("0.1").
+-vsn("0.2").
 
 -behaviour(gen_server).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
+-export([start/0, get/1, set/2]).
+-export([
+	token/2,
+	activities/0, activities/1, activities/2,
+	projects/0, projects/1, projects/2,
+	memberships/1, memberships/2, memberships/3,
+	iterations/1, iterations/2, iterations/3,
+	stories/1, stories/2, stories/3, stories/4,
+	notes/4,
+	tasks/2, tasks/3, tasks/4
+	]
+).
 
 -include("ptrackerl.hrl").
--type start_result() :: {ok, pid()} | {error, {already_started, pid()}} | {error, term()}.
--type default_actions()      :: all | {find, string()} | {del, string()}.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% SPECS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%% API
--export([start/0, update/2,
-	token/2,
-	activity/0, activity/1, activity/2,
-	projects/1,
-	membership/2,
-	iterations/1, iterations/2, iterations/3,
-	stories/2,
-	tasks/3,
-	api/1, api/2]).
+-spec start() -> pid().
+-spec get(atom()) -> term().
+-spec set(atom(), term()) -> term().
+-spec token(string(),string()) -> term().
+-spec activities() -> term().
+-spec activities(id()) -> term().
+-spec activities(id(), tuple()) -> term().
+-spec projects() -> term().
+-spec projects(id()) -> term().
+-spec projects(add, project()) -> term().
+-spec memberships(id()) -> term().
+-spec memberships(id(),id()) -> term().
+-spec memberships(id(), add, membership()) -> term().
+-spec iterations(id()) -> term().
+-spec iterations(id(), tuple()) -> term().
+-spec iterations(id(),atom(),tuple()) -> term().
+-spec stories(id()) -> term().
+-spec stories(id(),id()) -> term().
+-spec stories(id(), create|delete, story()|id()) -> term().
+-spec stories(id(), update, id(), story()) -> term().
+-spec notes(id(), id(), create, note()) -> term().
+-spec tasks(id(),id()) -> term().
+-spec tasks(id(),id(),id()) -> term().
+-spec tasks(id(),id(),delete,id()) -> term().
+-spec init([]) -> {ok, term()}.
 
-%% GEN SERVER
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2]).
--export([test/0]).
+-spec handle_call(tuple(), pid(), term()) -> term().
+-spec handle_cast(tuple(), term())        -> term().
+-spec handle_info(term(), term())         -> term().
+-spec terminate(term(), term())           -> term().
+-spec code_change(term(), term(), term()) -> term().
 
 -record(state, {
 		token :: string()
 		}).
--opaque state() :: #state{}.
 
--record(request, {
-		url              :: string(),
-		method = get     :: atom(),
-		headers = []     :: tuple(),
-		params = []      :: string()
+-record(action, {
+		method    = get :: get|post|put|delete,
+		content_type    :: undefined|xml
 		}).
--opaque request() :: #request{}.
+
+-record(item, {
+		path      = ["projects"]                  :: list(),
+		use_token = true                          :: boolean(),
+		actions = [
+			{ get,    #action{} },
+			{ create, #action{method = post,   content_type = xml} },
+			{ update, #action{method = update, content_type = xml} },
+			{ delete, #action{method = delete} }] :: list()
+		}).
+
+-define(MIME_TYPES, [{xml, "application/xml"}]).
+-define(API_METHODS, [
+		{token, #item{
+				path = ["tokens"],
+				use_token = false,
+				actions = [{ retrieve, #action{method = post} }]
+				}
+			},
+		{activities,  #item{path = ["activities"]} },
+		{projects,    #item{} },
+		{memberships, #item{} },
+		{iterations,  #item{actions = [{ get, #action{} }] }},
+		{stories,     #item{} },
+		{notes,       #item{} },
+		{tasks,       #item{} }
+		]
+	).
+-define(API_URL, "https://www.pivotaltracker.com/services/v3").
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% API FUNCTIONS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
--spec start() -> start_result().
-start() ->
-	gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
-
--spec update(atom(), term()) -> Response::term().
-update(token, Token) ->
-	gen_server:call(?MODULE, {update, token, Token}).
+start() -> gen_server:start({local, ?MODULE}, ?MODULE, [], []).
+get(token) -> gen_server:call(?MODULE, {state, get, token}).
+set(token, Value) -> gen_server:call(?MODULE, {state, set, token, Value}).
 
 %% Token
--spec token(list(), list()) -> Response::term().
-token(Username, Password) ->
-	gen_server:call(?MODULE, {token, Username, Password}).
+token(Username, Password) -> api(token, retrieve, ["active"], [{username, Username}, {password, Password}]).
 
-%% Activity
--spec activity() -> Response::term().
-activity() ->
-	activity(undefined, []).
+%% Activities
+activities()            -> api(activities, get, "").
+activities(Id)          -> api(projects, get, [Id, "activities"]).
+activities(Id, Filters) -> api(projects, get, [Id, "activities" ++ "?" ++ build_params(Filters)]).
 
--spec activity(list()|string()) -> Response::term().
-activity([{_,_}|_] = Filters) ->
-	activity(undefined, Filters);
-activity(ProjectId) ->
-	activity(ProjectId, []).
+projects()            -> api(projects, get, "").
+projects(Id)          -> api(projects, get, [Id]).
+projects(add, Record) -> api(projects, create, "", [ptrackerl_pack:project(pack, Record)]);
+projects(remove, Id)  -> api(projects, delete, [Id]).
 
--spec activity(string(),list()) -> Response::term().
-activity(ProjectId, Filters) ->
-	gen_server:call(?MODULE, {activity, {project_id, ProjectId, filters, Filters}}).
+memberships(ProjectId)              -> api(memberships, get,    [ProjectId, "memberships"]).
+memberships(ProjectId, Id)          -> api(memberships, get,    [ProjectId, "memberships", Id]).
+memberships(ProjectId, add, Record) -> api(memberships, create, [ProjectId, "memberships"], [ptrackerl_pack:membership(pack, Record)]);
+memberships(ProjectId, remove, Id)  -> api(memberships, delete, [ProjectId, "memberships", Id]).
 
-%% Projects
--spec projects(atom()|tuple()) -> Response::term().
-projects(all) ->
-	gen_server:call(?MODULE, {projects, all});
-projects({find, ProjectId}) ->
-	gen_server:call(?MODULE, {projects, {find, ProjectId}});
-projects({add, ProjectRecord}) ->
-	gen_server:call(?MODULE, {projects, {add, ProjectRecord}});
-projects({del, ProjectId}) ->
-	gen_server:call(?MODULE, {projects, {del, ProjectId}}).
+iterations(ProjectId)            -> api(iterations, get, [ProjectId, "iterations"]).
+iterations(ProjectId,
+			[{_,_}|_] = Filters) -> api(iterations, get, [ProjectId, "iterations?" ++ build_params(Filters)]);
+iterations(ProjectId, GroupedBy) -> api(iterations, get, [ProjectId, "iterations", GroupedBy]).
+iterations(ProjectId,
+			GroupedBy,
+			[{_,_}|_] = Filters) -> api(iterations, get, [ProjectId, "iterations", to_string(GroupedBy) ++ "?" ++ build_params(Filters)]).
 
-%% Membership
--spec membership(string(), default_actions() | {add, person()}) -> Response::term().
-membership(ProjectId, Actions) ->
-	gen_server:call(?MODULE, {membership, ProjectId, Actions}).
+stories(ProjectId)                     -> api(stories, get, [ProjectId, "stories"]).
+stories(ProjectId, Id)                 -> api(stories, get, [ProjectId, "stories", Id]).
+stories(ProjectId, create, Record)     -> api(stories, add, [ProjectId, "stories"], ptrackerl_pack:story(pack, Record));
+stories(ProjectId, delete, Id)         -> api(stories, del, [ProjectId, "stories", Id]).
+stories(ProjectId, update, Id, Record) -> api(stories, put, [ProjectId, "stories", Id], ptrackerl_pack:story(pack, Record)).
 
-%% Iterations
--spec iterations(string()) -> Response::term().
-iterations(ProjectId) ->
-	iterations(ProjectId, "", []).
+notes(ProjectId, StoryId, create, Record)
+		-> api(notes, get, [ProjectId, "stories", StoryId, "notes"], ptrackerl_pack:note(pack, Record)).
 
--spec iterations(string(), list()|string()) -> Response::term().
-iterations(ProjectId, [{_,_},_] = Limits) ->
-	iterations(ProjectId, "", Limits);
-iterations(ProjectId, Group) ->
-	iterations(ProjectId, Group, []).
-
--spec iterations(string(), string(), list()) -> Response::term().
-iterations(ProjectId, Group, Limits) ->
-	gen_server:call(?MODULE, {iterations, ProjectId, Group, Limits}).
-
-%% Stories
--spec stories(list(), atom()|tuple()) -> Response::term().
-stories(ProjectId, all) ->
-	gen_server:call(?MODULE, {stories, {ProjectId, all}});
-stories(ProjectId, {find, StoryId}) ->
-	gen_server:call(?MODULE, {stories, {ProjectId, {find, StoryId}}});
-stories(ProjectId, {add, StoryRecord}) ->
-	gen_server:call(?MODULE, {stories, {ProjectId, {add, StoryRecord}}});
-stories(ProjectId, {update, StoryId, StoryRecord}) ->
-	gen_server:call(?MODULE, {stories, {ProjectId, {update, StoryId, StoryRecord}}});
-stories(ProjectId, {del, StoryId}) ->
-	gen_server:call(?MODULE, {stories, {ProjectId, {del, StoryId}}});
-stories(ProjectId, {note, StoryId, NoteRecord}) ->
-	gen_server:call(?MODULE, {stories, {ProjectId, {note, StoryId, NoteRecord}}});
-stories(ProjectId, {deliver_all_finished}) ->
-	gen_server:call(?MODULE, {stories, {ProjectId, {deliver_all_finished}}}).
-
-%% Tasks
--spec tasks(list(), list(), atom()|tuple()) -> Response::term().
-tasks(ProjectId, StoryId, all) ->
-	gen_server:call(?MODULE, {tasks, {ProjectId, StoryId, all}});
-tasks(ProjectId, StoryId, {find, TaskId}) ->
-	gen_server:call(?MODULE, {tasks, {ProjectId, StoryId, {find, TaskId}}}).
-
--spec api(request()) -> tuple().
-api(Request) ->
-	api(Request, undefined).
-
--spec api(request(), string()) -> tuple().
-api(Request, Token) ->
-	Url = build_url(Request#request.url),
-	Headers = Request#request.headers ++ case Token of
-		undefined -> [];
-		_ -> [{"X-TrackerToken",Token}]
-	end,
-	Method = Request#request.method,
-	Params = build_params(Request#request.params),
-	
-	io:format("URL:     ~p\n", [Url]),
-	io:format("Headers: ~p\n", [Headers]),
-	io:format("Method:  ~p\n", [Method]),
-	io:format("Params:  ~p\n", [Params]),
-	
-	{ok, Status, _Headers, Body} = ibrowse:send_req(Url, Headers, Method, Params),
-	{status(Status), Body}.
+tasks(ProjectId, StoryId)                 -> api(tasks, get, [ProjectId, "stories", StoryId, "tasks"]).
+tasks(ProjectId, StoryId, TaskId)         -> api(tasks, get, [ProjectId, "stories", StoryId, "tasks", TaskId]).
+tasks(ProjectId, StoryId, delete, TaskId) -> api(tasks, delete, [ProjectId, "stories", StoryId, "tasks", TaskId]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% GEN SERVER FUNCTIONS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
--spec init(list()) -> {ok, state()}.
-init([]) ->
-	{ok, #state{token = ""}}.
+init([]) -> { ok, #state{} }.
+handle_call({ state, get, Key }, _From, State) ->
+	Value = case Key of
+		token -> State#state.token;
+		_ -> undefined
+	end,
+	{reply, Value, State};
+handle_call({ state, set, Key, Value }, _From, State) ->
+	case Key of
+		token -> {reply, ok, State#state{token = to_string(Value)}};
+		_ -> {reply, not_found, State}
+	end;
+handle_call({api, {ItemName, ActionName, Args, Body}}, _From, State) ->
+	{Item, Action} = record_for(ItemName, ActionName),
+	% Url
+	Url = build_url(Item#item.path ++ Args),
 
--spec handle_call(tuple(),reference(), state()) -> {reply, ok, state()}.
-handle_call({update, token, Token}, _From, State) ->
-	{ reply, ok, State#state{token=Token} };
-
-handle_call({token, Username, Password}, _From, State) ->
-	Request = #request{
-			url = ["tokens", "active"],
-			method = post,
-			params = [{username, Username}, {password, Password}]
-			},
-	{reply, api(Request), State};
-
-handle_call({activity}, _From, State) ->
-	Token = State#state.token,
-	Request = #request{ url = ["activities"] },
-	{reply, api(Request, Token), State};
-
-handle_call({activity, {project_id, ProjectId, filters, Filters}}, _From, State) ->
-	Token = State#state.token,
-	Params = build_params(Filters),
-	Url = case ProjectId of
+	% Headers
+	Headers = case Action#action.content_type of
 		undefined -> [];
-		_ -> ["projects", ProjectId]
-	end ++ ["activities?" ++ Params],
-	Request = #request{ url = Url },
-	{reply, api(Request, Token), State};
-
-handle_call({projects, Action}, _From, State) ->
-	Token = State#state.token,
-	Request = case Action of
-		all -> #request{ url = ["projects"] };
-		{find, Id} -> #request{ url = ["projects", Id] };
-		{add, ProjectRecord} -> #request{
-				url = ["projects"],
-				method = post,
-				headers = [{"Content-Type", "application/xml"}],
-				params = [ptrackerl_pack:project(pack, ProjectRecord)]
-				};
-		{del, ProjectId} -> #request{
-				url = ["projects", ProjectId],
-				method = delete
-				}
+		Type -> [{"Content-Type",proplists:get_value(Type, ?MIME_TYPES)}]
+	end ++
+	case Item#item.use_token of
+		true -> [{"X-TrackerToken", State#state.token}];
+		_ -> []
 	end,
-	{reply, api(Request, Token), State};
 
-handle_call({membership, ProjectId, Action}, _From, State) ->
-	Token = State#state.token,
-	Request = case Action of
-		all -> #request{ url = ["projects", ProjectId, "memberships"] };
-		{find, Id} -> #request{ url = ["projects", ProjectId, "memberships", Id] };
-		{add, Record} -> #request {
-				url = ["projects", ProjectId, "memberships"],
-				method = post,
-				headers = [{"Content-Type", "application/xml"}],
-				params = [ptrackerl_pack:membership(pack, Record)]
-				};
-		{del, Id} -> #request {
-				url = ["projects", ProjectId, "memberships", Id],
-				method = delete
-			}
-		end,
-		{reply, api(Request, Token), State};
+	{ok, Status, _Headers, Response} = request(Url, Action#action.method, Headers, Body),
+	case Status of
+		"200" -> {reply, {200, ptrackerl_parser:pack({ItemName, Response})}, State};
+		"500" -> {reply, {500, "error"}, State};
+		_     -> {reply, {Status, Response}, State}
+	end.
 
-handle_call({iterations, ProjectId, Group, Limits}, _From, State) ->
-	Token = State#state.token,
-	Params = build_params(Limits),
-	io:format("Params: ~p\n", [Params]),
-	Request = #request{ url = ["projects", ProjectId, "iterations", Group ++ "?" ++ Params] },
-	{reply, api(Request, Token), State};
-
-handle_call({stories, {ProjectId, Action}}, _From, State) ->
-	Token = State#state.token,
-	Request = case Action of
-		all ->
-			#request{
-				url = ["projects", ProjectId, "stories"]
-			};
-		{find, Id} ->
-			#request{
-				url = ["projects", ProjectId, "stories", Id]
-			};
-		{add, StoryRecord} ->
-			#request{
-				url = ["projects", ProjectId, "stories"],
-				method = post,
-				headers = [{"Content-Type", "application/xml"}],
-				params = [ptrackerl_pack:story(pack, StoryRecord)]
-			};
-		{update, StoryId, StoryRecord} ->
-			#request{
-				url = ["projects", ProjectId, "stories", StoryId],
-				method = put,
-				headers = [{"Content-Type", "application/xml"}],
-				params = [ptrackerl_pack:story(pack, StoryRecord)]
-				};
-		{del, StoryId} ->
-			#request{
-				url = ["projects", ProjectId, "stories", StoryId],
-				method = delete
-				};
-		{note, StoryId, NoteRecord} ->
-			#request{
-				url = ["projects", ProjectId, "stories", StoryId, "notes"],
-				method = post,
-				headers = [{"Content-Type", "application/xml"}],
-				params = [ptrackerl_pack:note(pack, NoteRecord)]
-				};
-		{deliver_all_finished} ->
-			#request{
-				url = ["projects", ProjectId, "stories", "deliver_all_finished"],
-				method = put
-				}
-	end,
-	{reply, api(Request, Token), State};
-
-handle_call({tasks, {ProjectId, StoryId, Action}}, _From, State) ->
-	Token = State#state.token,
-	Url = case Action of
-		all -> ["projects", ProjectId, "stories", StoryId, "tasks"];
-		{find, Id} -> ["projects", ProjectId, "stories", StoryId, "tasks", Id]
-	end,
-	Request = #request{ url = Url },
-	{reply, api(Request, Token), State}.
-
--spec handle_cast(term(), state()) -> {noreply, state()}.
-handle_cast(_P, State) ->
-	{noreply, State}.
-
--spec handle_info(term(), state()) -> {noreply, state()}.
-handle_info(_Info, State) ->
-	{noreply, State}.
-
--spec terminate(any(), state()) -> any().
-terminate(_Reason, _State) ->
-	ok.
+handle_cast(_, State) -> { ok, State }.
+handle_info(Msg, State) -> { Msg, State }.
+terminate(Reason, State) -> { Reason, State }.
+code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% PRIVATE FUNCTIONS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+request(Url, Method, Headers, Params) ->
+	Body = build_params(Params),
+	io:format("URL:     ~p\n", [Url]),
+	io:format("Method:  ~p\n", [Method]),
+	io:format("Headers: ~p\n", [Headers]),
+	io:format("Body:    ~p\n", [Body]),
+	ibrowse:send_req(Url, Headers, Method, Body).
+
+api(ItemName, ActionName, Args) -> api(ItemName, ActionName, Args, "").
+api(ItemName, ActionName, Args, Body) ->
+	gen_server:call(?MODULE, {api, {ItemName, ActionName, Args, Body}}).
+
+record_for(ItemName, ActionName) ->
+	Item = proplists:get_value(ItemName, ?API_METHODS),
+	Action = proplists:get_value(ActionName, Item#item.actions),
+	{ Item, Action }.
+
 build_url(Args) ->
-	Base = ["https://www.pivotaltracker.com/services/v3"],
-%	Base = ["http://localhost:10000/services/v3"],
-	string:join(Base ++ Args, "/").
+	Base = [?API_URL],
+	Args2 = lists:map(fun(X) -> to_string(X) end, Args),
+	string:join(Base ++ Args2, "/").
 
 build_params(Params) ->
 	List = lists:map(fun(X) -> format_param(X) end, Params),
 	string:join(List, "&").
 
 format_param({Key,Value}) ->
-	string:join([atom_to_list(Key), Value], "=");
-format_param(String) -> String.
+	string:join([to_string(Key), to_string(Value)], "=");
+format_param(String) -> to_string(String).
 
--spec status(string()) -> integer()|atom().
-status("200") -> 200;
-status("400") -> 400;
-status("401") -> 401;
-status("500") -> 500;
-status(_)     -> undefined.
-
-test() ->
-	ok.
+to_string(Value) when is_atom(Value) -> atom_to_list(Value);
+to_string(Value) when is_integer(Value) -> integer_to_list(Value);
+to_string(Value) -> Value.
