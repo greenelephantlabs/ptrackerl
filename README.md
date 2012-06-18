@@ -17,13 +17,14 @@ rr(ptrackerl).
 ptrackerl:start().
 ptrackerl:token("yourusername@host.com", "yourpassword").
 T = "YOUR TOKEN". % See token response
-ptrackerl:update(token, T). % Set token for further requests
+ptrackerl:set(token, T). % Set token for further requests
 
 % PROJECTS
-ptrackerl:projects(all).
-ptrackerl:projects({find, "PROJECT_ID").
+ptrackerl:projects(). % retrieve all projects
+ptrackerl:projects("PROJECT_ID"). % retrieve project with id "PROJECT_ID"
 Project = #project{name = "Project Name", point_scale = ["1","2","3"]}.
 ptrackerl:projects({add, Project}).
+ptrackerl:projects(remove, "PROJECT_ID").
 
 % STORIES
 ptrackerl:stories("PROJECT_ID", all).
