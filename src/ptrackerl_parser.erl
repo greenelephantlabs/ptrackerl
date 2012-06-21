@@ -47,7 +47,6 @@ do_pack(activities, Xml) ->
 		};
 
 do_pack(memberships, Xml) ->
-  io:format("do_pack memberships"),
   lists:map(fun(Membership) ->
                  #membership{
                              id = list_to_integer(pathx("//membership/id/text()",Membership)),
