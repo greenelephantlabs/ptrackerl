@@ -46,6 +46,24 @@ do_pack(activities, Xml) ->
 		id = pathx("//activity/id/text()", Xml)
 		};
 
+do_pack(memberships, Xml) ->
+  io:format("do_pack memberships"),
+  lists:map(fun(Membership) ->
+                 #membership{
+                             id = list_to_integer(pathx("//membership/id/text()",Membership)),
+                             role = pathx("//membership/role/text()",Membership),
+                             person=#person{
+                                            email = pathx("//membership/person/email/text()",Membership),
+                                            name = pathx("//membership/person/name/text()",Membership),
+                                            initials = pathx("//membership/person/initials/text()",Membership)
+                                           },
+                             project=#project{
+                                              id = list_to_integer(pathx("//membership/project/id/text()",Membership)) ,
+                                              name = pathx("//membership/project/name/text()",Membership)
+                                              }
+                            }
+            end,xmerl_xpath:string("//memberships/membership",Xml));
+
 do_pack(_Item, Xml) ->
 	Xml.
 
