@@ -185,10 +185,6 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 request(Url, Method, Headers, Params) ->
 	Body = build_params(Params),
-	io:format("URL:     ~p\n", [Url]),
-	io:format("Method:  ~p\n", [Method]),
-	io:format("Headers: ~p\n", [Headers]),
-	io:format("Body:    ~p\n", [Body]),
 	ibrowse:send_req(Url, Headers, Method, Body).
 
 api(ItemName, ActionName, Args) -> api(ItemName, ActionName, Args, "").
