@@ -83,7 +83,7 @@ do_unpack(project, Record) ->
 pathx(String, Xml) ->
 	case xmerl_xpath:string(String, Xml) of
 		[] -> nil;
-		[Record] -> Record#xmlText.value
+		Records -> lists:foldl(fun(R,String) -> String ++ R#xmlText.value end,"", Records)  %% unicode characters cause multiple records to be returned;must join them together
 	end.
 
 to_text(Tuple) ->
