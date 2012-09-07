@@ -90,7 +90,7 @@
 		{tasks,       #item{} }
 		]
 	).
--define(API_URL, "https://www.pivotaltracker.com/services/v3").
+-define(API_URL, "https://www.pivotaltracker.com/services/v4").
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% API FUNCTIONS

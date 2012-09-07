@@ -35,6 +35,13 @@ unpack({Item, Record}) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% PRIVATE FUNCTIONS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+do_pack(projects, Xml) ->
+    lists:map(fun(Project) ->
+                      #project{id = pathx("/project/id/text()", Project),
+                               name = pathx("/project/name/text()", Project)
+                              }
+              end, xmerl_xpath:string("//projects/project", Xml));
+
 do_pack(token, Xml) ->
 	#token{
 		guid = pathx("//token/guid/text()", Xml),
