@@ -14,4 +14,4 @@ xref: all
 	rebar skip_deps=true xref
 
 shell: all
-	erl -pa ebin -pa deps/*/ebin +Bc +K true -smp enable -boot start_sasl -s crypto -s ibrowse -s ssl
+	erl -pa ebin -pa deps/*/ebin +Bc +K true -smp enable -boot start_sasl -s crypto -s ibrowse -s ssl -s reloader -eval "c:m(ptrackerl)"
