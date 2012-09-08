@@ -48,10 +48,41 @@ do_pack(token, Xml) ->
 		id   = pathx("//token/id/text()", Xml)
 		};
 
+do_pack(story_activities, Xml) ->
+    lists:map(fun(Act) ->
+                      do_pack(activities, Act)
+              end, xmerl_xpath:string("//activities/activity", Xml));
+
 do_pack(activities, Xml) ->
-	#activity{
-		id = pathx("//activity/id/text()", Xml)
-		};
+    #activity{
+         id = pathx("//activity/id/text()", Xml),
+         description = pathx("//activity/description/text()", Xml),
+         occurred_at = pathx("//activity/occurred_at/text()", Xml),
+         event_type = pathx("//activity/event_type/text()", Xml),
+         author = pathx("//activity/author/person/initials/text()", Xml),
+         stories = do_pack(stories, Xml)
+        };
+
+do_pack(iterations, Xml) ->
+    lists:map(fun(Act) ->
+                      #iteration{id = pathx("//iteration/id/text()", Act),
+                                 number = pathx("//iteration/number/text()", Act),
+                                 start = pathx("//iteration/start/text()", Act),
+                                 finish = pathx("//iteration/finish/text()", Act),
+                                 stories = do_pack(stories, Act)}
+              end, xmerl_xpath:string("//iterations/iteration", Xml));
+
+do_pack(stories, Xml) ->
+    lists:map(fun(Act) ->
+                      do_pack(story, Act)
+              end, xmerl_xpath:string("//stories/story", Xml));
+
+do_pack(story, Xml) ->
+    #story{id   = pathx("//story/id/text()", Xml),
+           name = pathx("//story/current_name/text() | //story/name/text()", Xml),
+           description = pathx("//story/description/text()", Xml),
+           current_state = pathx("//story/current_state/text()", Xml)
+          };
 
 do_pack(memberships, Xml) ->
   lists:map(fun(Membership) ->

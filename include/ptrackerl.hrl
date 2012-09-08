@@ -10,7 +10,7 @@
 		id      :: integer(),
 		version :: integer(),
 		event_type :: string(),
-		ocurred_at :: string(),
+		occurred_at :: string(),
 		author :: string(),
 		project_id :: integer(),
 		description :: string(),
@@ -56,6 +56,16 @@
 		labels        :: list()
 		}).
 -type story() :: #story{}.
+
+-record(iteration, {
+          id :: integer(),
+          number :: integer(),
+          start :: string(),
+          finish :: string(),
+          team_strength :: number(),
+          stories :: [story()]
+         }).
+-type iteration() :: #iteration{}.
 
 -record(note, {
 		text :: string()

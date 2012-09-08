@@ -6,14 +6,15 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([start/0, get/1, set/2]).
 -export([
-	token/2,
-	activities/0, activities/1, activities/2,
-	projects/0, projects/1, projects/2,
-	memberships/1, memberships/2, memberships/3,
-	iterations/1, iterations/2, iterations/3,
-	stories/1, stories/2, stories/3, stories/4,
-	notes/4,
-	tasks/2, tasks/3, tasks/4
+         token/2,
+         activities/0, activities/1, activities/2,
+         story_activities/1,
+         projects/0, projects/1, projects/2,
+         memberships/1, memberships/2, memberships/3,
+         iterations/1, iterations/2, iterations/3,
+         stories/1, stories/2, stories/3, stories/4,
+         notes/4,
+         tasks/2, tasks/3, tasks/4
 	]
 ).
 
@@ -86,6 +87,7 @@
 		{memberships, #item{} },
 		{iterations,  #item{actions = [{ get, #action{} }] }},
 		{stories,     #item{} },
+		{story_activities, #item{path = ["stories"]} },
 		{notes,       #item{} },
 		{tasks,       #item{} }
 		]
@@ -106,6 +108,8 @@ token(Username, Password) -> api(token, retrieve, ["active"], [{username, Userna
 activities()            -> api(activities, get, "").
 activities(Id)          -> api(projects, get, [Id, "activities"]).
 activities(Id, Filters) -> api(projects, get, [Id, "activities" ++ "?" ++ build_params(Filters)]).
+
+story_activities(Id)    -> api(story_activities, get, [Id, "activities"]).
 
 projects()            -> api(projects, get, "").
 projects(Id)          -> api(projects, get, [Id]).
@@ -189,7 +193,7 @@ request(Url, Method, Headers, Params) ->
 
 api(ItemName, ActionName, Args) -> api(ItemName, ActionName, Args, "").
 api(ItemName, ActionName, Args, Body) ->
-	gen_server:call(?MODULE, {api, {ItemName, ActionName, Args, Body}}).
+	gen_server:call(?MODULE, {api, {ItemName, ActionName, Args, Body}}, 300000).
 
 record_for(ItemName, ActionName) ->
 	Item = proplists:get_value(ItemName, ?API_METHODS),
