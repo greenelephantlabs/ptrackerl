@@ -49,9 +49,12 @@ do_pack(token, Xml) ->
 		};
 
 do_pack(story_activities, Xml) ->
-    lists:map(fun(Act) ->
-                      do_pack(activities, Act)
-              end, xmerl_xpath:string("//activities/activity", Xml));
+    lists:keysort(
+      #activity.occurred_at,
+      lists:map(fun(Act) ->
+                        do_pack(activities, Act)
+                end, xmerl_xpath:string("//activities/activity", Xml))
+     );
 
 do_pack(activities, Xml) ->
     #activity{
@@ -80,6 +83,7 @@ do_pack(stories, Xml) ->
 do_pack(story, Xml) ->
     #story{id   = pathx("//story/id/text()", Xml),
            name = pathx("//story/current_name/text() | //story/name/text()", Xml),
+           estimate = pathx("//story/current_estimate/text() | //story/estimate/text()", Xml),
            description = pathx("//story/description/text()", Xml),
            current_state = pathx("//story/current_state/text()", Xml)
           };
