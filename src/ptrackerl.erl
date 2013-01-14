@@ -237,7 +237,7 @@ report() ->
     report(["519173", "61492"]).
 
 report(ProjectIds) ->
-    report(ProjectIds, "2012/08/01 00:00:01 UTC", "2012/08/31 23:59:59 UTC").
+    report(ProjectIds, "2012/11/01 00:00:01 UTC", "2012/11/31 23:59:59 UTC").
 
 report(ProjectIds, Start, Stop) ->
     aggregate([ {PId, report_project(PId, Start, Stop)} || PId <- ProjectIds ]).
@@ -267,9 +267,9 @@ aggregate(X) ->
                                     orddict:append(A, E, Acc)
                             end, orddict:new(), X3),
     io:format("~n~nBy day:~n"),
-    [ io:format("~s: ~b = ~p~n", [K, lists:sum(V), V]) || {K, V} <- PerDay ],
+    [ io:format("~s: ~b = ~p~n", [K, lists:sum([ X || X <- V, X > 0 ]), V]) || {K, V} <- PerDay ],
     io:format("~nBy author:~n"),
-    [ io:format("~s: ~b = ~p~n", [K, lists:sum(V), V]) || {K, V} <- PerAuthor ],
+    [ io:format("~s: ~b = ~p~n", [K, lists:sum([ X || X <- V, X > 0 ]), V]) || {K, V} <- PerAuthor ],
     io:format("~n~n"),
     ok.
 
